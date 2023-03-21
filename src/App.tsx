@@ -1,78 +1,150 @@
-import { motion } from 'framer-motion';
-import { useState } from 'react';
+import Lottie from 'lottie-react';
+import React, { useEffect, useRef, useState } from 'react';
 
-import { Box, Button, Flex, Image, Link, Text } from '@chakra-ui/react';
+import { Box, Button, Heading } from '@chakra-ui/react';
 
-import ThemeToggleButton from './components/ThemeToggleButton';
-import logo from './logo.svg';
+import background from '../assets/lottie/53851-cold-mountain-background.json';
 
-const textFontSizes = [16, 18, 24, 30];
+import About from './pages/About';
+import Home from './pages/Home';
+import Projects from './pages/Projects';
 
-function App(): JSX.Element {
-  const [count, setCount] = useState(0);
+function App() {
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+
+  const sections = [
+    {
+      id: '1',
+      label: 'Home',
+      content: <Home />,
+    },
+    {
+      id: '2',
+      label: 'About me',
+      content: <About />,
+    },
+    {
+      id: '3',
+      label: 'Projects',
+      content: <Projects />,
+    },
+  ];
+  const sectionRefs = useRef<Array<React.RefObject<HTMLDivElement>>>([]);
+  const [isMounted, setIsMounted] = useState(false);
+  const SCROLL_THRESHOLD = 50;
+
+  useEffect(() => {
+    sectionRefs.current = sections.map(
+      (_, i) => sectionRefs.current[i] || React.createRef()
+    );
+    setIsMounted(true);
+  }, [sections]);
+
+  useEffect(() => {
+    if (isMounted) {
+      const currentSectionIndex = window.location.hash
+        ? sections.findIndex(
+            (section) => section.id === window.location.hash.slice(1)
+          )
+        : 0;
+      scrollToSection(currentSectionIndex);
+    }
+  }, [isMounted, sections]);
+
+  const scrollToSection = (index: number) => {
+    sectionRefs.current[index].current?.scrollIntoView({
+      block: 'start',
+      behavior: 'smooth',
+    });
+  };
+
+  useEffect(() => {
+    let prevScrollPos = window.pageYOffset;
+
+    const handleScroll = () => {
+      const currentScrollPos = window.pageYOffset;
+      const scrollDirection = prevScrollPos < currentScrollPos ? 'down' : 'up';
+      prevScrollPos = currentScrollPos;
+
+      console.log(scrollDirection);
+
+      const currentSectionIndex = sectionRefs.current.findIndex(
+        (ref) =>
+          ref.current &&
+          ref.current.offsetTop <= currentScrollPos + SCROLL_THRESHOLD
+      );
+      if (currentSectionIndex !== activeSectionIndex) {
+        setActiveSectionIndex(currentSectionIndex);
+        scrollToSection(currentSectionIndex);
+      }
+    };
+
+    const container = document.querySelector('#container');
+    if (!container)
+      return () => {
+        console.log('aaa');
+      };
+    container.addEventListener('scroll', handleScroll);
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   return (
-    <Box>
-      <Flex
-        as="header"
-        direction="column"
+    <div className="App" id="container">
+      <Box
+        position="absolute"
+        zIndex={-1}
+        width="100%"
+        maxHeight="100vh"
+        top={0}
+        left={0}
+        right={0}
+        gap={-10}
+      >
+        <Lottie animationData={background} loop autoPlay />
+      </Box>
+      <Heading
+        width="100%"
+        position="fixed"
         alignItems="center"
         justifyContent="center"
-        h="100vh"
-        fontSize="3xl"
+        display="flex"
+        backgroundColor="rgb(13, 21, 77, 0.6)"
+        gap={10}
+        top={0}
+        py={5}
       >
-        <motion.div
-          animate={{ rotateZ: 360 }}
-          transition={{
-            repeat: Infinity,
-            duration: 20,
-            ease: 'linear',
-          }}
-        >
-          <Image src={logo} alt="" h="40vmin" />
-        </motion.div>
-        <Text fontSize={textFontSizes}>
-          Hello Vite + React + Typescript + Chakra UI!
-        </Text>
-        <Button
-          colorScheme="blue"
-          fontSize={textFontSizes}
-          onClick={() => setCount((c) => c + 1)}
-          marginTop="2"
-        >
-          count is: {count}
-        </Button>
-        <Text fontSize={textFontSizes}>
-          Edit <code>App.tsx</code> and save to test HMR updates.
-        </Text>
-        <Text fontSize={textFontSizes}>
-          <Link href="https://reactjs.org" isExternal color="#61dafb">
-            Learn React
-          </Link>
-          {' | '}
-          <Link
-            href="https://vitejs.dev/guide/features.html"
-            isExternal
-            color="#61dafb"
+        {sections.map((section, i) => (
+          <Button
+            key={i}
+            onClick={() => scrollToSection(i)}
+            backgroundColor="transparent"
+            colorScheme="whiteAlpha"
           >
-            Vite Docs
-          </Link>
-          {' | '}
-          <Link
-            href="https://www.typescriptlang.org/"
-            isExternal
-            color="#61dafb"
-          >
-            Typescript
-          </Link>
-          {' | '}
-          <Link href="https://chakra-ui.com" isExternal color="#61dafb">
-            Chakra UI
-          </Link>
-        </Text>
-      </Flex>
-      <ThemeToggleButton pos="fixed" bottom="2" right="2" />
-    </Box>
+            {section.label}
+          </Button>
+        ))}
+      </Heading>
+
+      {sections.map((section, i) => (
+        <Box
+          key={i}
+          className="section"
+          ref={sectionRefs.current[i]}
+          w="100%"
+          alignItems="center"
+          justifyContent="center"
+          display="flex"
+          height="100vh"
+          backgroundSize="cover"
+          backgroundRepeat="no-repeat"
+        >
+          {section.content}
+        </Box>
+      ))}
+    </div>
   );
 }
 
